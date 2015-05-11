@@ -298,5 +298,34 @@ class Readability {
             'content' => $content
         );
     }
+
+    /**
+     * Gets meta data from the current document.
+     *
+     * @param $metaName string
+     * @return string
+     * @throws DOMException
+     */
+    public function getMeta($metaName) {
+
+        $content = '';
+
+        if (!$this->DOM) {
+            throw new DOMException('DOM not read.');
+        }
+
+        $metaNodes = $this->DOM->getElementsByTagName("meta");
+
+        if ($metaNodes->length) {
+            foreach ($metaNodes as $metaNode) {
+                if ($metaNode->getAttribute('name') == $metaName) {
+                    $content = $metaNode->getAttribute('content');
+                    break;
+                }
+            }
+        }
+
+        return $content;
+    }
 }
 
