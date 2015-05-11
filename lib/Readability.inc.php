@@ -1,15 +1,15 @@
 <?php
-// vim: set et sw=4 ts=4 sts=4 ft=php fdm=marker ff=unix fenc=utf8 nobomb:
+
 /**
  * PHP Readability
  *
- * Readability PHP 版本，详见
+ * Readability PHP version, see
  *      http://code.google.com/p/arc90labs-readability/
  *
  * ChangeLog:
  *      [+] 2014-02-08 Add lead image param and improved get title function.
  *      [+] 2013-12-04 Better error handling and junk tag removal.
- *      [+] 2011-02-17 初始化版本
+ *      [+] 2011-02-17 Initialization version
  *
  * @date   2013-12-04
  * 
@@ -23,53 +23,53 @@
 define("READABILITY_VERSION", 0.21);
 
 class Readability {
-    // 保存判定结果的标记位名称
+    // Save determination result flag name
     const ATTR_CONTENT_SCORE = "contentScore";
 
-    // DOM 解析类目前只支持 UTF-8 编码
+    // DOM parsing classes currently only supports UTF-8 encoding
     const DOM_DEFAULT_CHARSET = "utf-8";
 
-    // 当判定失败时显示的内容
+    // When it is determined to display the contents of failure
     const MESSAGE_CAN_NOT_GET = "Readability was unable to parse this page for content.";
 
-    // DOM 解析类（PHP5 已内置）
+    // DOM parsing classes (PHP5 already built-in)
     protected $DOM = null;
 
-    // 需要解析的源代码
+    // To parse the source code
     protected $source = "";
 
-    // 章节的父元素列表
+    // Parent element lists in the section
     private $parentNodes = array();
 
-    // 需要删除的标签
-    // Note: added extra tags from https://github.com/ridcully
+    // Tags to remove.
     private $junkTags = Array("style", "form", "iframe", "script", "button", "input", "textarea", 
                                 "noscript", "select", "option", "object", "applet", "basefont",
                                 "bgsound", "blink", "canvas", "command", "menu", "nav", "datalist",
                                 "embed", "frame", "frameset", "keygen", "label", "marquee", "link");
 
-    // 需要删除的属性
+    // Properties to remove.
     private $junkAttrs = Array("style", "class", "onclick", "onmouseover", "align", "border", "margin");
 
 
     /**
-     * 构造函数
-     *      @param $input_char 字符串的编码。默认 utf-8，可以省略
-     */
+     * Constructor
+     * @param $source
+     * @param $input_char string. The default utf-8, can be omitted
+    */
     function __construct($source, $input_char = "utf-8") {
         $this->source = $source;
 
-        // DOM 解析类只能处理 UTF-8 格式的字符
+        // DOM parsing classes can handle UTF-8 character format
         $source = mb_convert_encoding($source, 'HTML-ENTITIES', $input_char);
 
-        // 预处理 HTML 标签，剔除冗余的标签等
-        $source = $this->preparSource($source);
+        // Pretreatment HTML tags, remove redundant labels
+        $source = $this->prepareSource($source);
 
-        // 生成 DOM 解析类
+        // Generate DOM parsing classes
         $this->DOM = new DOMDocument('1.0', $input_char);
         try {
             //libxml_use_internal_errors(true);
-            // 会有些错误信息，不过不要紧 :^)
+            // It will be some error message , but it does not matter :^)
             if (!@$this->DOM->loadHTML('<?xml encoding="'.Readability::DOM_DEFAULT_CHARSET.'">'.$source)) {
                 throw new Exception("Parse HTML Error!");
             }
@@ -89,12 +89,13 @@ class Readability {
 
 
     /**
-     * 预处理 HTML 标签，使其能够准确被 DOM 解析类处理
+     * Pretreatment HTML tags , so that it can be processed accurately DOM parsing classes
      *
+     * @param string String
      * @return String
      */
-    private function preparSource($string) {
-        // 剔除多余的 HTML 编码标记，避免解析出错
+    private function prepareSource($string) {
+        // Excluding the extra HTML coding marked to avoid parsing error
         preg_match("/charset=([\w|\-]+);?/", $string, $match);
         if (isset($match[1])) {
             $string = preg_replace("/charset=([\w|\-]+);?/", "", $string, 1);
@@ -113,15 +114,17 @@ class Readability {
 
 
     /**
-     * 删除 DOM 元素中所有的 $TagName 标签
+     * Remove all of the DOM element $TagName tag
      *
+     * @param $RootNode
+     * @param $TagName
      * @return DOMDocument
      */
     private function removeJunkTag($RootNode, $TagName) {
         
         $Tags = $RootNode->getElementsByTagName($TagName);
         
-        //Note: always index 0, because removing a tag removes it from the results as well.
+        // Note: always index 0, because removing a tag removes it from the results as well.
         while($Tag = $Tags->item(0)){
             $parentNode = $Tag->parentNode;
             $parentNode->removeChild($Tag);
@@ -132,7 +135,7 @@ class Readability {
     }
 
     /**
-     * 删除元素中所有不需要的属性
+     * Remove all unnecessary elements attributes
      */
     private function removeJunkAttr($RootNode, $Attr) {
         $Tags = $RootNode->getElementsByTagName("*");
@@ -146,13 +149,13 @@ class Readability {
     }
 
     /**
-     * 根据评分获取页面主要内容的盒模型
-     *      判定算法来自：http://code.google.com/p/arc90labs-readability/
+     * According to the main contents page ratings,
+     * get box model determination algorithm from：http://code.google.com/p/arc90labs-readability/
      *
      * @return DOMNode
      */
     private function getTopBox() {
-        // 获得页面所有的章节
+        // Get all the chapters page
         $allParagraphs = $this->DOM->getElementsByTagName("p");
 
         // Study all the paragraphs and find the chunk that has the best score.
@@ -188,10 +191,10 @@ class Readability {
                 $contentScore += strlen($paragraph->nodeValue);
             }
 
-            // 保存父元素的判定得分
+            // Save the parent element determination score
             $parentNode->setAttribute(Readability::ATTR_CONTENT_SCORE, $contentScore);
 
-            // 保存章节的父元素，以便下次快速获取
+            // Save chapters of the parent element, so that the next quick access
             array_push($this->parentNodes, $parentNode);
         }
 
@@ -209,13 +212,13 @@ class Readability {
             }
         }
         
-        // 此时，$topBox 应为已经判定后的页面内容主元素
+        // At this time, $topBox should have determined that the content of the main elements of a page after
         return $topBox;
     }
 
 
     /**
-     * 获取 HTML 页面标题
+     * Get HTML page title
      *
      * @return String
      */
@@ -223,8 +226,7 @@ class Readability {
         $split_point = ' - ';
         $titleNodes = $this->DOM->getElementsByTagName("title");
 
-        if ($titleNodes->length 
-            && $titleNode = $titleNodes->item(0)) {
+        if ($titleNodes->length && $titleNode = $titleNodes->item(0)) {
             // @see http://stackoverflow.com/questions/717328/how-to-explode-string-right-to-left
             $title  = trim($titleNode->nodeValue);
             $result = array_map('strrev', explode($split_point, strrev($title)));
@@ -238,6 +240,7 @@ class Readability {
     /**
      * Get Leading Image Url
      *
+     * @param $node
      * @return String
      */
     public function getLeadImageUrl($node) {
@@ -252,40 +255,42 @@ class Readability {
 
 
     /**
-     * 获取页面的主要内容（Readability 以后的内容）
+     * Get the main content of the page (Readability after content)
      *
+     * @throws RuntimeException
      * @return Array
      */
     public function getContent() {
+
         if (!$this->DOM) return false;
 
-        // 获取页面标题
+        // Get page title
         $ContentTitle = $this->getTitle();
 
-        // 获取页面主内容
+        // Get page main content
         $ContentBox = $this->getTopBox();
         
-        //Check if we found a suitable top-box.
+        // Check if we found a suitable top-box.
         if($ContentBox === null)
             throw new RuntimeException(Readability::MESSAGE_CAN_NOT_GET);
         
-        // 复制内容到新的 DOMDocument
+        // Copy the contents to the new DOMDocument
         $Target = new DOMDocument;
         $Target->appendChild($Target->importNode($ContentBox, true));
 
-        // 删除不需要的标签
+        // Remove unwanted tag
         foreach ($this->junkTags as $tag) {
             $Target = $this->removeJunkTag($Target, $tag);
         }
 
-        // 删除不需要的属性
+        // Delete unneeded property
         foreach ($this->junkAttrs as $attr) {
             $Target = $this->removeJunkAttr($Target, $attr);
         }
 
         $content = mb_convert_encoding($Target->saveHTML(), Readability::DOM_DEFAULT_CHARSET, "HTML-ENTITIES");
 
-        // 多个数据，以数组的形式返回
+        // A plurality of data, in the form of an array of return
         return Array(
             'lead_image_url' => $this->getLeadImageUrl($Target),
             'word_count' => mb_strlen(strip_tags($content), Readability::DOM_DEFAULT_CHARSET),
@@ -293,7 +298,5 @@ class Readability {
             'content' => $content
         );
     }
-
-    function __destruct() { }
 }
 
