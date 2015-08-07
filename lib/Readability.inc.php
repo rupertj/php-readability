@@ -20,8 +20,6 @@
  * @link   http://tuxion.nl/
  */
 
-define("READABILITY_VERSION", 0.21);
-
 class Readability {
     // Save determination result flag name
     const ATTR_CONTENT_SCORE = "contentScore";
@@ -39,16 +37,16 @@ class Readability {
     protected $source = "";
 
     // Parent element lists in the section
-    private $parentNodes = array();
+    protected $parentNodes = array();
 
     // Tags to remove.
-    private $junkTags = Array("style", "form", "iframe", "script", "button", "input", "textarea", 
+    protected $junkTags = Array("style", "form", "iframe", "script", "button", "input", "textarea",
                                 "noscript", "select", "option", "object", "applet", "basefont",
                                 "bgsound", "blink", "canvas", "command", "menu", "nav", "datalist",
                                 "embed", "frame", "frameset", "keygen", "label", "marquee", "link");
 
     // Properties to remove.
-    private $junkAttrs = Array("style", "class", "onclick", "onmouseover", "align", "border", "margin");
+    protected $junkAttrs = Array("style", "class", "onclick", "onmouseover", "align", "border", "margin");
 
 
     /**
@@ -95,15 +93,17 @@ class Readability {
      * @return String
      */
     private function prepareSource($string) {
+
         // Excluding the extra HTML coding marked to avoid parsing error
-        preg_match("/charset=([\w|\-]+);?/", $string, $match);
+        preg_match("/charset=([\\w|\\-]+);?/", $string, $match);
+
         if (isset($match[1])) {
-            $string = preg_replace("/charset=([\w|\-]+);?/", "", $string, 1);
+            $string = preg_replace("/charset=([\\w|\\-]+);?/", "", $string, 1);
         }
 
         // Replace all doubled-up <BR> tags with <P> tags, and remove fonts.
-        $string = preg_replace("/<br\/?>[ \r\n\s]*<br\/?>/i", "</p><p>", $string);
-        $string = preg_replace("/<\/?font[^>]*>/i", "", $string);
+        $string = preg_replace("#<br/?>[ \\r\\n\\s]*<br/?>#i", "</p><p>", $string);
+        $string = preg_replace("#</?font[^>]*>#i", "", $string);
 
         // @see https://github.com/feelinglucky/php-readability/issues/7
         //   - from http://stackoverflow.com/questions/7130867/remove-script-tag-from-html-content
@@ -154,7 +154,7 @@ class Readability {
      *
      * @return DOMNode
      */
-    private function getTopBox() {
+    protected function getTopBox() {
         // Get all the chapters page
         $allParagraphs = $this->DOM->getElementsByTagName("p");
 
@@ -167,23 +167,8 @@ class Readability {
             $className    = $parentNode->getAttribute("class");
             $id           = $parentNode->getAttribute("id");
 
-            // Look for a special classname
-            if (preg_match("/(comment|meta|footer|footnote)/i", $className)) {
-                $contentScore -= 50;
-            } else if(preg_match(
-                "/((^|\\s)(post|hentry|entry[-]?(content|text|body)?|article[-]?(content|text|body)?)(\\s|$))/i",
-                $className)) {
-                $contentScore += 25;
-            }
-
-            // Look for a special ID
-            if (preg_match("/(comment|meta|footer|footnote)/i", $id)) {
-                $contentScore -= 50;
-            } else if (preg_match(
-                "/^(post|hentry|entry[-]?(content|text|body)?|article[-]?(content|text|body)?)$/i",
-                $id)) {
-                $contentScore += 25;
-            }
+            $contentScore += $this->scoreClassName($className);
+            $contentScore += $this->scoreID($id);
 
             // Add a point for the paragraph found
             // Add points for any commas within this paragraph
@@ -271,8 +256,9 @@ class Readability {
         $ContentBox = $this->getTopBox();
         
         // Check if we found a suitable top-box.
-        if($ContentBox === null)
+        if($ContentBox === null) {
             throw new RuntimeException(Readability::MESSAGE_CAN_NOT_GET);
+        }
         
         // Copy the contents to the new DOMDocument
         $Target = new DOMDocument;
@@ -326,6 +312,37 @@ class Readability {
         }
 
         return $content;
+    }
+
+    protected function scoreClassName($className) {
+
+        // Look for a special classname
+
+        if (preg_match("/(comment|meta|footer|footnote)/i", $className)) {
+            return -50;
+        }
+
+        // hentry: http://microformats.org/wiki/hentry
+
+        if (preg_match("/((^|\\s)(post|hentry|(entry|article)[-]?(content|text|body)?)(\\s|$))/i", $className)) {
+            return 25;
+        }
+
+        return 0;
+    }
+
+    protected function scoreID($id) {
+
+        // Look for a special ID
+        if (preg_match("/(comment|meta|footer|footnote)/i", $id)) {
+            return -50;
+        }
+
+        if (preg_match("/^(post|hentry|(entry|article)[-]?(content|text|body)?)$/i", $id)) {
+            return 25;
+        }
+
+        return 0;
     }
 }
 
